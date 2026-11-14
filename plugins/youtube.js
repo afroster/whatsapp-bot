@@ -25,8 +25,8 @@ Module({
 
 ╭━━〔 *SONG MENU* 〕
 ┃
-┃ 1. 🎵Audio
-┃ 2. 🎵MP3 Document
+┃ 1. ⛥Audio
+┃ 2. ⛥MP3 Document
 ┃
 ╰━━━━━━━━━━━━
 
@@ -56,7 +56,7 @@ Module({
         if (!['1', '2'].includes(choice)) return;
         const title = body
             .split('\n')[0]
-            .replace(/[🎵*_]/g, '')
+            .replace(/[⛥*_]/g, '')
             .trim();
 
         if (!title) return;
