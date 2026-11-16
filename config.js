@@ -10,7 +10,7 @@ module.exports = {
     SESSION_ID: process.env.SESSION_ID || '',
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE) || 100 * 1024 * 1024,
     timezone: process.env.TIMEZONE || 'UTC',
-    MONGODB_URI: process.env.MONGODB_URI || '',
+  //  MONGODB_URI: process.env.MONGODB_URI || '',
     WORK_TYPE: process.env.WORK_TYPE || '',
     STATUS_REACT: isTrue(process.env.STATUS_REACT) || false // true 
     
