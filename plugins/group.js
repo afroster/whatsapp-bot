@@ -1,6 +1,6 @@
 const { Module } = require('../lib/plugins');
 const config = require('../config');
-const Warn = require('../lib/database/warn');
+//const Warn = require('../lib/database/warn');
 
 Module({
     command: 'add',
@@ -148,7 +148,7 @@ Module({
     await message.send(`Rejected: ${requests.length} users`);
 });
 
-Module({
+/*Module({
     command: 'warn',
     package: 'group',
     description: 'Warn a user in the group'
