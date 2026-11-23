@@ -190,8 +190,9 @@ async function startRoom(message, room) {
   description: 'Play multiplayer chess',
 })(async (message, match) => {      
     try {
+        if (!message.isGroup) return;
         const group = message.from;
-        const sender = message.sender;
+        const sender = message.user;
         if (!group?.endsWith('@g.us')) {
             return message.send('Chess is only available in group chats');
         }
