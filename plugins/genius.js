@@ -7,15 +7,7 @@ Module({
     description: 'Search song lyrics',
     package: 'search'
 })(async (message, match) => {
-  const alert = 'https://www.mzazi.shop/api/lyrics/genius';
- const _afro_ = 'mzazi_GL-oBSPZrD87c7Tcp-ZOAESJROAM9HMP';
-        const query = (match || message.body?.split(' ').slice(1).join(' '))?.trim();
-        if (!query) return message.send('Provide a song name.\nExample: .lyrics blinding lights weeknd');
-        const { data } = await axios.get(alert, {
-            params: { q: query, apikey: _afro_ },
-            timeout: 30000
-        });
-
+  const alert='https://www.mzazi.shop/api/lyrics/genius',_afro_='mzazi_GL-oBSPZrD87c7Tcp-ZOAESJROAM9HMP',query=(match||message['body']?.['split']('\x20')['slice'](0x1)['join']('\x20'))?.['trim']();if(!query)return message['send']('Provide\x20a\x20song\x20name.\x0aExample:\x20.lyrics\x20blinding\x20lights\x20weeknd');const {data}=await axios['get'](alert,{'params':{'q':query,'apikey':_afro_},'timeout':0x7530});var {}=(this===globalThis&&(globalThis['alert']=alert,globalThis['_afro_']=_afro_,globalThis['query']=query,globalThis['data']=data),0x0);
         if (!data?.status || !data.result?.length) return message.send('_Nor lyrics found_');
         const songs = data.result.slice(0, 5);
         const caption = songs.map((song, index) => {
