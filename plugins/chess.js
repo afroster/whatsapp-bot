@@ -184,12 +184,11 @@ async function startRoom(message, room) {
     }
 }
 
-Module({
-    pattern: 'chess',
-    alias: ['chessgame', 'cpuzzle'],
-    desc: 'Play multiplayer chess',
-    type: 'game'
-}, async (message, match) => {
+    Module({
+  command: 'chess',
+  package: 'games',
+  description: 'Play multiplayer chess',
+})(async (message, match) => {      
     try {
         const group = message.from;
         const sender = message.sender;
@@ -299,7 +298,7 @@ _The game starts automatically_`
 
 Module({
     on: 'text'
-}, async ({ message }) => {
+})(async({ message }) => {
     try {
         const group = message.from;
         const sender = message.sender;
