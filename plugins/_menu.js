@@ -1,91 +1,176 @@
 const os = require('os');
-const { Module, commands } = require('../lib/plugins');
+const { Module, commands, plugins } = require('../lib/plugins');
 const config = require('../config');
 const TextStyles = require('../lib/textfonts');
+
 const styles = new TextStyles();
+const startedAt = Date.now();
 
 Module({
-  command: 'menu',
-  package: 'general',
-  description: 'Show all commands or a specific package'
+    command: 'menu',
+    package: 'general',
+    aliases: ['h', 'help'],
+    description: 'Show commands, packages and bot information',
+    cooldown: '5'
 })(async (message, match) => {
-  const hostname = os.hostname();
-  const time = new Date().toLocaleTimeString('en-ZA', {
-    timeZone: 'Africa/Johannesburg'
-  });
 
-  const mode = config.WORK_TYPE || process.env.WORK_TYPE || 'unknown';
-  const ram = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2);
-  const req_package = match?.trim().toLowerCase();
+    const Func = {};
 
-  const groupedCommands = commands
-    .filter(command => command.command)
-    .reduce((groups, command) => {
-      const pack_name = command.package || 'general';
+    Func.uptime = () => {
+        const seconds = Math.floor((Date.now() - startedAt) / 1000);
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
 
-      if (!groups[pack_name]) {
-        groups[pack_name] = [];
-      }
+        return `${days}d ${hours}h ${minutes}m ${secs}s`;
+    };
 
-      groups[pack_name].push(command.command);
+    Func.stats = () => {
+        const all = [...plugins.commands, ...plugins.events];
+        const memory = process.memoryUsage();
+        const cpus = os.cpus();
+        const load = os.loadavg()[0];
 
-      return groups;
-    }, {});
+        return {
+            ram: (memory.heapUsed / 1024 / 1024).toFixed(2),
+            cpu: cpus.length
+                ? Math.min(100, (load / cpus.length) * 100).toFixed(1)
+                : '0.0',
+            commands: plugins.commands.length,
+            enabled: all.filter(plugin => plugin.enabled).length,
+            disabled: all.filter(plugin => !plugin.enabled).length
+        };
+    };
 
-  const packages = Object.keys(groupedCommands).sort();p
-  if (req_package) {
-    const pack_name = packages.find(
-      name => name.toLowerCase() === req_package
+    Func.getPackages = list => {
+        return list.reduce((groups, plugin) => {
+            const name = plugin.package || 'general';
+
+            if (!groups[name]) groups[name] = [];
+            groups[name].push(plugin.command);
+
+            return groups;
+        }, {});
+    };
+
+    Func.packageMenu = (name, list) => {
+        const unique = [...new Set(list)].sort((a, b) =>
+            a.localeCompare(b)
+        );
+
+        let menu = `╭───╼「 *${styles.toMonospace(name.toUpperCase())}* 」\n`;
+
+        for (const command of unique) {
+            menu += `┃ ${styles.toMonospace(command)}\n`;
+        }
+
+        menu += '╰──────────╼';
+
+        return menu;
+    };
+
+    Func.search = (query, list, packages) => {
+        const results = list.filter(plugin =>
+            plugin.command.includes(query) ||
+            plugin.aliases.some(alias => alias.includes(query))
+        );
+
+        if (!results.length) {
+            return `*NOT FOUND*\n\nNo command or package matching "${query}"\n\n*Available Packages:*\n${packages.map(name => `┃ ${name}`).join('\n')}`;
+        }
+
+        let menu = `╭───╼「 *SEARCH* 」\n`;
+
+        for (const plugin of results) {
+            menu += `┃ ${styles.toMonospace(plugin.command)}\n`;
+            menu += `┃ ${plugin.description || 'No description'}\n\n`;
+        }
+
+        menu += '╰──────────╼';
+
+        return menu;
+    };
+
+    const owner = plugins.isOwner(message);
+    const query = match?.trim().toLowerCase();
+
+    const available = commands.filter(plugin =>
+        plugin.command &&
+        (owner || !plugin.owner) &&
+        (owner || plugin.enabled)
     );
 
-    if (pack_name) {
-      const command_list = [...new Set(groupedCommands[pack_name])]
-        .sort((a, b) => a.localeCompare(b));
+    const grouped = Func.getPackages(available);
+    const packages = Object.keys(grouped).sort();
 
-      let menu = `╭───╼「 *${styles.toMonospace(pack_name.toUpperCase())}* 」\n`;
+    if (query) {
+        const packageName = packages.find(
+            name => name.toLowerCase() === query
+        );
 
-      for (const command of command_list) {
-        menu += `┃ ${styles.toMonospace(command)}\n`;
-      }
+        if (packageName) {
+            return message.send(
+                Func.packageMenu(packageName, grouped[packageName])
+            );
+        }
 
-      menu += '╰──────────╼';
+        const found = available.find(plugin =>
+            plugin.command === query ||
+            plugin.aliases.includes(query)
+        );
 
-      return message.reply(menu);
-    }
-  }
+        if (found) {
+            return message.send(
+                `╭───╼「 *COMMAND INFO* 」\n` +
+                `┃ Name: ${found.command}\n` +
+                `┃ Aliases: ${found.aliases.join(', ') || 'None'}\n` +
+                `┃ Package: ${found.package || 'general'}\n` +
+                `┃ Description: ${found.description || 'No description'}\n` +
+                `┃ Status: ${found.enabled ? 'Enabled' : 'Disabled'}\n` +
+                `╰──────────╼`
+            );
+        }
 
-  let menu = '╭──╼「 *MENU* 」\n';
-  menu += `┃ ⛥ Host: ${styles.toMonospace(hostname)}\n`;
-  menu += `┃ ⛥ User: ${styles.toMonospace(message.pushName || 'unknown')}\n`;
-  menu += `┃ ⛥ Prefix: ${styles.toMonospace(config.prefix || '.')}\n`;
-  menu += `┃ ⛥ Time: ${styles.toMonospace(time)}\n`;
-  menu += `┃ ⛥ Mode: ${styles.toMonospace(mode)}\n`;
-  menu += `┃ ⛥ RAM: ${styles.toMonospace(`${ram} MB`)}\n`;
-  menu += '╰──────────╼\n\n';
-
-  if (req_package) {
-    menu += `_Package not found: ${req_package}_\n\n`;
-    menu += '*Available Packages:*\n';
-
-    for (const pack_name of packages) {
-      menu += `┃ ${styles.toMonospace(pack_name)}\n`;
-    }
-
-    return message.reply(menu);
-  }
-
-  for (const pack_name of packages) {
-    const command_list = [...new Set(groupedCommands[pack_name])]
-      .sort((a, b) => a.localeCompare(b));
-
-    menu += `╭───╼「 *${styles.toMonospace(pack_name.toUpperCase())}* 」\n`;
-
-    for (const command of command_list) {
-      menu += `┃ ${styles.toMonospace(command)}\n`;
+        return message.send(
+            Func.search(query, available, packages)
+        );
     }
 
-    menu += '╰──────────╼\n\n';
-  }
+    const stats = Func.stats();
+    const mode = config.WORK_TYPE || process.env.WORK_TYPE;
+    const version = require('../package.json').version;
 
-  return message.reply(menu.trim());
+    const time = new Date().toLocaleTimeString('en-ZA', {
+        timeZone: 'Africa/Johannesburg'
+    });
+
+    let menu = `╭───╼「 *RAGNAR-BOT* 」\n`;
+    menu += `┃ ⛥ User: ${styles.toMonospace(message.pushName || 'unknown')}\n`;
+    menu += `┃ ⛥ Prefix: ${styles.toMonospace(config.prefix || '.')}\n`;
+    menu += `┃ ⛥ Mode: ${styles.toMonospace(mode)}\n`;
+    menu += `┃ ⛥ Time: ${styles.toMonospace(time)}\n`;
+    menu += `┃ ⛥ Uptime: ${styles.toMonospace(Func.uptime())}\n`;
+    menu += `┃ ⛥ Version: ${styles.toMonospace(version)}\n`;
+    menu += `╰──────────────╼\n\n`;
+
+    menu += `╭───╼「 *SYSTEM INFO* 」\n`;
+    menu += `┃ ⛥ Host: ${styles.toMonospace(os.hostname())}\n`;
+    menu += `┃ ⛥ RAM: ${styles.toMonospace(`${stats.ram} MB`)}\n`;
+    menu += `┃ ⛥ CPU: ${styles.toMonospace(`${stats.cpu}%`)}\n`;
+    menu += `┃ ⛥ Commands: ${styles.toMonospace(stats.commands)}\n`;
+    menu += `┃ ⛥ Enabled: ${styles.toMonospace(stats.enabled)}\n`;
+    menu += `┃ ⛥ Disabled: ${styles.toMonospace(stats.disabled)}\n`;
+    menu += `┃ ⛥ Packages: ${styles.toMonospace(packages.length)}\n`;
+    menu += `╰──────────────╼\n\n`;
+
+    for (const pack of packages) {
+        menu += Func.packageMenu(pack, grouped[pack]) + '\n\n';
+    }
+
+    menu += `*${styles.toMonospace('Ragnar')}*\n`;
+    menu += `_Made with ❤️_`;
+
+    return message.send(menu.trim());
 });
+          
