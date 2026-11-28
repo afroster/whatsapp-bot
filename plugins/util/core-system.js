@@ -1,3 +1,6 @@
+/*
+ @LP 26 Ragnar md
+*/
 
 const axios = require('axios');
 
