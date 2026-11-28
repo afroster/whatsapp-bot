@@ -3,6 +3,131 @@ const { Module, commands, plugins } = require('../lib/plugins');
 const config = require('../config');
 const TextStyles = require('../lib/textfonts');
 
+Module({
+    command: 'cmdinfo',
+    aliases: ['commandinfo'],
+    package: 'general',
+    description: 'Show command information'
+})(async (message, match) => {
+
+    const Func = {};
+
+    Func.find = name => {
+        name = name.trim().toLowerCase()
+        return commands.find(plugin =>
+            plugin.command === name ||
+            plugin.aliases.includes(name)
+        );
+    };
+
+    const query = match?.trim();
+    if (!query) {
+        return message.send(
+            `*HELP MENU*\n\n` +
+            `Usage: .cmdinfo command\n` +
+            `Example: .cmdinfo play\n\n` +
+            `Use .menu to view all commands`
+        );
+    }
+
+    const plugin = Func.find(query);
+    if (!plugin) {
+        return message.send(`Command "${query}" not found`);
+    }
+
+    if (plugin.owner && !plugins.isOwner(message)) {
+        return message.send('This command is restricted to the owner');
+    }
+
+    if (!plugin.enabled && !plugins.isOwner(message)) {
+        return message.send('This command is currently disabled');
+    }
+
+    return message.send(
+        `*${plugin.command}*\n\n` +
+        `${plugin.description || 'No descrip'}`
+    );
+});
+
+Module({
+    command: 'list',
+    aliases: ['cmdlist', 'commands'],
+    package: 'general',
+    description: 'List available commands',
+    'cooldown': '5'
+})(async (message, match) => {
+
+    const Func = {};
+
+    Func.getCommands = () => {
+        const owner = plugins.isOwner(message);
+        return commands.filter(plugin =>
+            plugin.command &&
+            (owner || !plugin.owner) &&
+            (owner || plugin.enabled)
+        );
+    };
+
+    Func.group = list => {
+        return list.reduce((groups, plugin) => {
+            const pack = plugin.package || 'general';
+            if (!groups[pack]) groups[pack] = [];
+
+            groups[pack].push(plugin);
+
+            return groups;
+        }, {});
+    };
+
+    Func.render = (name, list) => {
+        const owner = plugins.isOwner(message);
+        let output = `╭───╼「 *${name.toUpperCase()}* 」\n`;
+        for (const plugin of [...list].sort((a, b) =>
+            a.command.localeCompare(b.command)
+        )) {
+            output += `┃ ${plugin.command}`;
+            if (owner) {
+                output += ` [${plugin.enabled ? 'ON' : 'OFF'}]`;
+            }
+
+            output += '\n';
+        }
+
+        return output + '╰──────────────╼';
+    };
+
+    const query = match?.trim().toLowerCase();
+    const available = Func.getCommands();
+    const grouped = Func.group(available);
+    const packages = Object.keys(grouped).sort();
+
+    if (query) {
+        const pack = packages.find(name =>
+            name.toLowerCase() === query
+        );
+
+        if (!pack) {
+            return message.send(
+                `Package "${query}" not found\n\n` +
+                `Available packages:\n${packages.join('\n')}`
+            );
+        }
+
+        return message.send(Func.render(pack, grouped[pack]));
+    }
+
+    let output = `╭───╼「 *COMMAND LIST* 」\n`;
+    output += `┃ Total: ${available.length}\n`;
+    output += `┃ Packages: ${packages.length}\n`;
+    output += `╰──────────────╼\n\n`;
+
+    for (const pack of packages) {
+        output += Func.render(pack, grouped[pack]) + '\n\n';
+    }
+
+    return message.send(output.trim());
+});
+
 const styles = new TextStyles();
 const startedAt = Date.now();
 
