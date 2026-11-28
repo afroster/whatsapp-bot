@@ -1,17 +1,9 @@
-const config = require('./config');
-const { SessionCode } = require('./lib/session');
-const { connect } = require('./lib/index');
-const { startServer } = require('./lib/server');
+const { Main } = require('./lib/bot');
 
-const Client = async () => {
-    try {
-        await SessionCode(config.SESSION_ID || process.env.SESSION_ID, './lib/Session');
-        await startServer();
-        await connect();
-    } catch (error) {
-        console.error(error.stack || error);
-        process.exit(1);
-    }
-};
+const bot = new Main({
+    reconnectDelay: 5000
+});
 
-Client();
+bot.connect();
+
+module.exports = bot;
