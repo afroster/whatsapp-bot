@@ -1,10 +1,111 @@
 const axios = require('axios')
 const { Module} = require('../lib/plugins');
-const { ytSearch, ytDownload } = require('../lib/youtube');
+const { ytSearch, 
+       ytDownload }
+       = require('../lib/youtube');
 const addMeta = require('../lib/Class/metadata');
+const youtube = require("../lib/youtube");
 
 Module({
-    command: 'song',
+    command: "song",
+    package: "downloader",
+    description: "Search YouTube songs"
+})(async (message, match) => {
+    const query = match?.trim();
+    if (!query) {
+    return message.send(".song <song name>");}
+    const buttons = message.ui.enabled();
+    try {  const status = buttons
+            ? null
+            : await message.send("Searching Yt...");
+
+        const results = await youtube.search(query, {
+            limit: 10
+        });
+
+        if (!results?.length) return message.send("No found");
+        const songs = results.map(video => ({
+            title: video.title,
+            url: video.url || `https://www.youtube.com/watch?v=${video.id}`,
+            duration: video.duration,
+            channel: video.author || video.channel?.name || "afrosame_0x"
+        }));
+
+        const text = [
+            "*RESULTS*",
+            `Query: ${query}`,
+            "",
+            ...songs.map((song, index) =>
+                `*${index + 1}. ${song.title}*\n${song.channel} · ${song.duration}\n${message.ui.cmd("play", song.url)}`
+            )
+        ].join("\n\n");
+
+        if (!buttons) {
+            if (status?.key) {
+                return message.conn.sendMessage(message.from, {
+                    text,
+                    edit: status.key
+                });
+            }
+
+            return message.send(text);
+        }
+
+        return message.sendList({
+            text,
+            header: "ragnar-md",
+            body: `Results for: ${query}`,
+            footer: "YouTube Music",
+            button: "Show Songs",
+            sections: [{
+                title: "Search Results",
+                rows: songs.map(song => ({
+                    title: song.title,
+                    description: `${song.duration} · ${song.channel}`,
+                    id: message.ui.cmd("play", song.url)
+                }))
+            }]
+        });
+    } catch (error) {
+        console.error(error);
+        return message.send("err");
+    }
+});
+                
+Module({
+    command: "play",
+    package: "downloader",
+    description: "Download YouTube songs as MP3"
+})(async (message, match) => {
+    const query = match?.trim();
+    if (!query) return message.send("Usage: .play <YouTube URL or song name>");
+    try { await message.send("Downloading audio...");
+        const results = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(query)
+            ? [{ url: query, title: "YouTube Audio" }]
+           : await youtube.search(query, { limit: 1 });
+        if (!results?.length) {
+            return message.send("No");
+        }
+        const song = results[0];
+        const url = song.url || `https://www.youtube.com/watch?v=${song.id}`;
+        const audio = await youtube.downloadAudio(url, {
+            bitrate: 128
+        });
+
+        if (!audio) return;
+        return message.send({
+            audio: audio.buffer || audio,
+            mimetype: "audio/mpeg",
+            fileName: `${song.title || "ragnar"}.mp3`,
+            ptt: false
+        });
+    } catch (error) {
+        console.error(error);
+        return;    }
+});
+
+Module({
+    command: 'ytm',
     package: 'downloader',
     description: 'Download YouTube music'
 })(async (message, match) => {
